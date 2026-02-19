@@ -1,0 +1,15 @@
+mode: full
+enable_behavior_learning: true
+oom_model: statistical
+thermal_limit: 85
+bottleneck_detection: true
+adaptive_batch_suggestion: true
+efficiency_scoring: true
+refresh_rate: 30
+strict_official_build: false
+enable_prometheus: false
+prometheus_port: 9108
+debug: false
+simulation: false
+replay_file: ""
+full_release_verify: false

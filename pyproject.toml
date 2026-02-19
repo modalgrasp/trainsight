@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trainsight"
+version = "0.1.0"
+description = "AI Training Intelligence Dashboard"
+readme = "README.md"
+authors = [{name="Pratham Patel"}]
+license = {text = "TrainSight Community License v1.0"}
+requires-python = ">=3.10"
+dependencies = [
+    "nvidia-ml-py",
+    "psutil",
+    "textual",
+    "rich",
+    "pyyaml",
+    "numpy",
+    "scikit-learn",
+    "prometheus-client",
+    "cryptography",
+]
+
+[project.scripts]
+trainsight = "trainsight.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["trainsight*", "gputrainintel*"]
+
+[tool.setuptools.package-data]
+"gputrainintel.config" = ["*.yaml"]
+
+"trainsight.config" = ["*.yaml"]
+"trainsight.security" = ["*.json", "*.pem"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
