@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from gputrainintel.legacy_app import GPUDashboard
+from rich.text import Text
+from textual.app import App, ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.reactive import reactive
+from textual.widgets import Footer, Header, Static
 
 from .analyzers.regression_anomaly import RegressionAnomalyDetector
 from .branding import assert_watermark_integrity
@@ -22,6 +26,7 @@ logger = logging.getLogger("trainsight")
 
 
 def row_from_payload(payload: dict[str, Any], power_cap_watts: float = 200.0) -> dict[str, Any]:
+    """Convert GPU payload to display row."""
     mem_total = max(1.0, float(payload.get("mem_total", 1.0)))
     mem_used = max(0.0, float(payload.get("mem_used", 0.0)))
     gpu_util = max(0.0, min(100.0, float(payload.get("gpu_util", 0.0))))
@@ -57,8 +62,58 @@ def row_from_payload(payload: dict[str, Any], power_cap_watts: float = 200.0) ->
     return row
 
 
-class Dashboard(GPUDashboard):
-    """TrainSight app wired through the internal event pipeline."""
+class GPUStatsWidget(Static):
+    """Widget to display GPU statistics."""
+
+    gpu_util = reactive(0.0)
+    mem_percent = reactive(0.0)
+    temp = reactive(0.0)
+    power = reactive(0.0)
+    gpu_name = reactive("NVIDIA GPU")
+
+    def render(self) -> Text:
+        """Render GPU stats."""
+        lines = [
+            Text(f"GPU: {self.gpu_name}", style="bold cyan"),
+            Text(f"Utilization: {self.gpu_util:.1f}%", style="green" if self.gpu_util < 80 else "yellow" if self.gpu_util < 95 else "red"),
+            Text(f"Memory: {self.mem_percent:.1f}%", style="green" if self.mem_percent < 80 else "yellow" if self.mem_percent < 95 else "red"),
+            Text(f"Temperature: {self.temp:.1f}°C", style="green" if self.temp < 80 else "yellow" if self.temp < 90 else "red"),
+            Text(f"Power: {self.power:.1f}W", style="dim"),
+        ]
+        return Text("\n").join(lines)
+
+
+class Dashboard(App):
+    """TrainSight GPU Monitoring Dashboard."""
+
+    CSS = """
+    Screen {
+        background: $surface;
+    }
+    
+    .header {
+        text-align: center;
+        padding: 1;
+    }
+    
+    .stats-container {
+        padding: 1;
+    }
+    
+    GPUStatsWidget {
+        padding: 1;
+        border: solid $primary;
+        margin: 1;
+    }
+    """
+
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("r", "refresh", "Refresh"),
+        ("s", "toggle_simulation", "Simulation"),
+    ]
+
+    simulation = reactive(False)
 
     def __init__(self, config: dict[str, Any] | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -68,6 +123,7 @@ class Dashboard(GPUDashboard):
         self.gpu_anomaly = RegressionAnomalyDetector()
         self.last_event_payload: dict[str, Any] | None = None
         self.prometheus = None
+        self.power_cap_watts = 200.0
 
         self.simulation = bool(self.config.get("simulation", False))
         self._rng = random.Random(7)
@@ -82,13 +138,19 @@ class Dashboard(GPUDashboard):
         self.last_event_payload = event.payload
         self.gpu_anomaly.update(float(event.payload.get("gpu_util", 0.0)))
 
+    def compose(self) -> ComposeResult:
+        """Compose the dashboard layout."""
+        yield Header()
+        with Container(classes="stats-container"):
+            yield GPUStatsWidget(id="gpu-stats")
+        yield Footer()
+
     async def on_mount(self) -> None:
+        """Mount handler."""
         assert_watermark_integrity()
-        await super().on_mount()
         hz = float(self.config.get("refresh_rate", 30))
-        # Realtime default: never go below 30 FPS in publish build.
         hz = max(30.0, min(60.0, hz))
-        self._set_refresh(1.0 / hz)
+        self.set_interval(1.0 / hz, self._update_stats)
 
         if bool(self.config.get("enable_prometheus", False)):
             port = int(self.config.get("prometheus_port", 9108))
@@ -167,8 +229,8 @@ class Dashboard(GPUDashboard):
         self._replay_idx = (self._replay_idx + 1) % len(self._replay_rows)
         return payload
 
-    def get_gpu_stats(self):
-        """Primary telemetry path from EventBus collector/sim/replay, then fallback to legacy NVML path."""
+    def get_gpu_stats(self) -> dict[str, Any]:
+        """Get GPU statistics."""
         if self.simulation:
             payload = self._simulated_payload()
             self._emit_payload(payload)
@@ -188,4 +250,27 @@ class Dashboard(GPUDashboard):
         if payload:
             return row_from_payload(payload, self.power_cap_watts)
 
-        return super().get_gpu_stats()
+        # Return default row if no data available
+        return row_from_payload({}, self.power_cap_watts)
+
+    def _update_stats(self) -> None:
+        """Update GPU stats display."""
+        try:
+            stats = self.get_gpu_stats()
+            widget = self.query_one("#gpu-stats", GPUStatsWidget)
+            widget.gpu_name = stats.get("name", "NVIDIA GPU")
+            widget.gpu_util = stats.get("gpu_util", 0.0)
+            widget.mem_percent = stats.get("mem_percent", 0.0)
+            widget.temp = stats.get("temp", 0.0)
+            widget.power = stats.get("power", 0.0)
+        except Exception as exc:
+            logger.debug("Stats update failed: %s", exc)
+
+    def action_toggle_simulation(self) -> None:
+        """Toggle simulation mode."""
+        self.simulation = not self.simulation
+        logger.info("Simulation mode: %s", self.simulation)
+
+    def action_refresh(self) -> None:
+        """Force refresh."""
+        self._update_stats()

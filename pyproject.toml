@@ -4,12 +4,39 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "trainsight"
-version = "0.1.0"
-description = "AI Training Intelligence Dashboard"
+version = "0.2.0"
+description = "AI Training Intelligence Dashboard - Live GPU telemetry, anomaly detection, and training diagnostics"
 readme = "README.md"
 authors = [{name="Pratham Patel"}]
-license = {text = "TrainSight Community License v1.0"}
+license = "Proprietary"
 requires-python = ">=3.10"
+keywords = [
+    "gpu",
+    "monitoring",
+    "training",
+    "deep-learning",
+    "machine-learning",
+    "pytorch",
+    "nvidia",
+    "telemetry",
+    "dashboard",
+    "anomaly-detection",
+    "mlops",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed",
+]
 dependencies = [
     "nvidia-ml-py",
     "psutil",
@@ -22,6 +49,12 @@ dependencies = [
     "cryptography",
 ]
 
+[project.urls]
+Homepage = "https://github.com/modalgrasp/trainsight"
+Documentation = "https://github.com/modalgrasp/trainsight#readme"
+Repository = "https://github.com/modalgrasp/trainsight"
+Issues = "https://github.com/modalgrasp/trainsight/issues"
+
 [project.scripts]
 trainsight = "trainsight.cli:main"
 
@@ -30,16 +63,46 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["trainsight*", "gputrainintel*"]
+include = ["trainsight*"]
 
 [tool.setuptools.package-data]
-"gputrainintel.config" = ["*.yaml"]
-
 "trainsight.config" = ["*.yaml"]
 "trainsight.security" = ["*.json", "*.pem"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+# Development tools
+dev = ["pytest", "pytest-asyncio", "pytest-cov"]
+
+# ML framework integrations (install only what you need)
+pytorch = ["torch>=2.0.0"]
+lightning = ["pytorch-lightning>=2.0.0", "torch>=2.0.0"]
+deepspeed = ["deepspeed>=0.10.0", "torch>=2.0.0"]
+accelerate = ["accelerate>=0.20.0", "torch>=2.0.0"]
+ray = ["ray[train]>=2.0.0"]
+
+# Experiment tracking
+mlflow = ["mlflow>=2.0.0"]
+wandb = ["wandb>=0.15.0"]
+
+# Production / infrastructure
+kubernetes = ["kubernetes>=27.0.0"]
+
+# Config schema validation (optional but recommended)
+validation = ["pydantic>=2.0.0"]
+
+# Install all optional integrations at once
+all = [
+    "torch>=2.0.0",
+    "pytorch-lightning>=2.0.0",
+    "deepspeed>=0.10.0",
+    "accelerate>=0.20.0",
+    "ray[train]>=2.0.0",
+    "mlflow>=2.0.0",
+    "wandb>=0.15.0",
+    "kubernetes>=27.0.0",
+    "pydantic>=2.0.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
