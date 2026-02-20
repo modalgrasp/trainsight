@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "AI Training Intelligence Dashboard - Live GPU telemetry, anomaly detection, and training diagnostics"
 readme = "README.md"
 authors = [{name="Pratham Patel"}]
-license = "Proprietary"
+license = {text = "TrainSight Community License v1.0"}
 requires-python = ">=3.10"
 keywords = [
     "gpu",
