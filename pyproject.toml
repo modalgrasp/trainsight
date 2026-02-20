@@ -63,9 +63,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["trainsight*"]
+include = ["trainsight*", "gputrainintel*"]
 
 [tool.setuptools.package-data]
+"gputrainintel.config" = ["*.yaml"]
 "trainsight.config" = ["*.yaml"]
 "trainsight.security" = ["*.json", "*.pem"]
 
